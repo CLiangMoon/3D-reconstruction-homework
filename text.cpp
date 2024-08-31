@@ -4,6 +4,7 @@
 #include <cfloat>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/SVD>
+using namespace std;
 
 class SingleCamera {
 public:
@@ -16,7 +17,7 @@ public:
 
     void composeP();
     void svdP();
-    void workIntrinsicAndExtrinsic();
+    void workInAndOut();
     void selfcheck(const Eigen::MatrixXf& w_check, const Eigen::MatrixXf& c_check);
 
 private:
@@ -47,9 +48,13 @@ void SingleCamera::composeP() {
 
 void SingleCamera::svdP() {
     Eigen::JacobiSVD<Eigen::MatrixXf> svd(P, Eigen::ComputeFullV);
-    Eigen::VectorXf singular_values = svd.singularValues();
-    M = svd.matrixV().col(11).head(12);
-    M.resize(3, 4);
+    //Eigen::VectorXf singular_values = svd.singularValues();
+    Eigen::VectorXf pm = svd.matrixV().col(svd.matrixV().cols() - 1);
+    cout<<"pm:\n"<<pm<<endl;
+    //M.resize(3, 4);
+    for (int i = 0; i < 12; ++i) {
+          M(i / 4, i % 4) = pm[i];
+    }
     A = M.block<3, 3>(0, 0);
     b = M.col(3);
     cout<<"M:\n"<<M<<endl;
@@ -57,30 +62,65 @@ void SingleCamera::svdP() {
     cout<<"b:\n"<<b.transpose()<<endl;
 }
 
-void SingleCamera::workIntrinsicAndExtrinsic() {
-    Eigen::MatrixXf A_inv = A.inverse();
-    K = A.block<3, 3>(0, 0);
-    R = A_inv * M.block<3, 3>(0, 0);
-    t = -R * b;
+void SingleCamera::workInAndOut(){
+    // Eigen::MatrixXf A_inv = A.inverse();
+    // K = A.block<3, 3>(0, 0);
+    // R = A_inv * M.block<3, 3>(0, 0);
+    // t = -R * b;
+    Eigen::Vector3f a1 = A.row(0);
+    Eigen::Vector3f a2 = A.row(1);
+    Eigen::Vector3f a3 = A.row(2);
+    float a=0;
+    float c=0;
+    float b1,b2;
     
+    //计算过程
+    a=1.0/a3.norm();
+    float c_x=pow(a,2)*a1.dot(a3);
+    float c_y=pow(a,2)*a2.dot(a3);
+    float cos_b1=a1.cross(a3).dot(a2.cross(a3));
+    float cos_b2=a1.cross(a3).norm()*a2.cross(a3).norm();
+    c=acos(-cos_b1/cos_b2);
+    b1=pow(a,2)*a1.cross(a3).norm()*sin(c);
+    b2=pow(a,2)*a2.cross(a3).norm()*sin(c);
+
+    Eigen::Vector3f r1=a2.cross(a3)/a2.cross(a3).norm();
+    Eigen::Vector3f r3=a3/a3.norm();
+    Eigen::Vector3f r2=r3.cross(r1);
+
+    K<<b1, -b1*(1/tan(c)), c_x, 
+       0, b2/sin(c), c_y,
+       0, 0, 1;
+    
+    R<<r1.transpose(),
+       r2.transpose(),
+       r3.transpose();
+
+    t=a*K.inverse()*b;
+
     std::cout << "K is " << std::endl << K << std::endl;
     std::cout << "R is " << std::endl << R << std::endl;
     std::cout << "t is " << std::endl << t.transpose() << std::endl;
 }
 
 void SingleCamera::selfcheck(const Eigen::MatrixXf& w_check, const Eigen::MatrixXf& c_check) {
-    float average_err = 0.0;
+    float average_err = 0;
+    //Eigen::Matrix<float, 5,2> pixel_check=Eigen::Matrix<float, 5,2>::Zero();
     
     for (int i = 0; i < w_check.rows(); ++i) {
         Eigen::Vector4f world_point = w_check.row(i).transpose();
         Eigen::Vector3f pixel_point = K * (R * world_point.head<3>() + t);
         pixel_point /= pixel_point(2);
+        //pixel_check.row(i)=pixel_point.head<2>();
         
         float error = (pixel_point.head<2>() - c_check.row(i).transpose()).norm();
         average_err += error;
     }
     
     average_err /= w_check.rows();
+    //average_err=(c_check-pixel_check).norm();
+    
+
     std::cout << "The average error is " << average_err << "," << std::endl;
     if (average_err > 0.1) {
         std::cout << "which is more than 0.1" << std::endl;
@@ -153,7 +193,7 @@ int main(int argc, char ** argv) {
     SingleCamera aCamera = SingleCamera(w_coor, c_coor, 12);  // 12 points in total are used
     aCamera.composeP();
     aCamera.svdP();
-    aCamera.workIntrinsicAndExtrinsic();
+    aCamera.workInAndOut();
     aCamera.selfcheck(w_check, c_check);  // test 5 points and verify M
 
     return 0;
