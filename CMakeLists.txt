@@ -9,7 +9,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 find_package(Eigen 3.0 REQUIRED)
 
 add_executable(camera_calib
-        text.cpp
+        text2.cpp
  )
 
 
