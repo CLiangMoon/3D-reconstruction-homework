@@ -70,19 +70,20 @@ void SingleCamera::workInAndOut(){
     Eigen::Vector3f a1 = A.row(0);
     Eigen::Vector3f a2 = A.row(1);
     Eigen::Vector3f a3 = A.row(2);
+    cout<<a1.transpose()<<endl<<a2.transpose()<<endl<<a3.transpose()<<endl;
     float a=0;
     float c=0;
     float b1,b2;
     
     //计算过程
     a=1.0/a3.norm();
-    float c_x=pow(a,2)*a1.dot(a3);
-    float c_y=pow(a,2)*a2.dot(a3);
+    float c_x=a*a*a1.dot(a3);
+    float c_y=a*a*a2.dot(a3);
     float cos_b1=a1.cross(a3).dot(a2.cross(a3));
     float cos_b2=a1.cross(a3).norm()*a2.cross(a3).norm();
     c=acos(-cos_b1/cos_b2);
-    b1=pow(a,2)*a1.cross(a3).norm()*sin(c);
-    b2=pow(a,2)*a2.cross(a3).norm()*sin(c);
+    b1=a*a*a1.cross(a3).norm()*sin(c);
+    b2=a*a*a2.cross(a3).norm()*sin(c);
 
     Eigen::Vector3f r1=a2.cross(a3)/a2.cross(a3).norm();
     Eigen::Vector3f r3=a3/a3.norm();
